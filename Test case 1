@@ -1,0 +1,72 @@
+/* Testbench for MIPS32 Processor
+
+    - Add three numbers 10, 20, and 30 stored in processor refisters.
+    - The steps: 
+        - Initialize register R1 with 10.
+        - Initialize register R2 with 20.
+        - Initialize register R3 with 25.
+        - Add the three numbers and store the sum in register R4, R5.
+    
+    Assembly Language Program:                     Machine Code (in Binary)                   Machine Code (in Hexadecimal)
+        ADDI R1, R0, 10   ; R1 = 10                001010 00000 00001 0000000000001010        32'h28010000
+        ADDI R2, R0, 20   ; R2 = 20                001010 00000 00010 0000000000010100        32'h28020014
+        ADDI R3, R0, 25   ; R3 = 25                001010 00000 00011 0000000000011001        32'h28030019
+        ADD  R4, R1, R2   ; R4 = R1 + R2           000000 00001 00010 00100 00000 000000      32'h00222000
+        ADD  R5, R4, R3   ; R5 = R4 + R3           000000 00100 00011 00101 00000 000000      32'h00832800
+        HLT               ; Halt the processor     111111 00000 00000 00000 00000 000000      32'hfc000000
+
+*/
+
+
+module test_mips32;
+
+    reg clk1, clk2;
+    integer k;
+
+    pipe_MIPS32 mips(clk1, clk2);
+
+    initial begin
+
+        // Initialize the clock signals
+        clk1 = 0; 
+        clk2 = 0;
+        repeat (20)     // Generating two clock cycles (20 time units) for each clock signal
+            begin
+              #5 clk1 = 1; #5 clk1 = 0; // Toggle clk1 every 10 time units
+              #5 clk2 = 1; #5 clk2 = 0; // Toggle clk2 every 10 time units
+            end
+    end
+
+    initial begin
+        // Initialize the instruction memory with the machine code for the program
+        mips.Mem[0] = 32'b001010_00000_00001_0000000000001010; // ADDI R1, R0, 10
+        mips.Mem[1] = 32'b001010_00000_00010_0000000000010100; // ADDI R2, R0, 20
+        mips.Mem[2] = 32'b001010_00000_00011_0000000000011001; // ADDI R3, R0, 25
+        mips.Mem[3] = 32'h0ce77800; // OR R7, R7, R7 (NOP)
+        mips.Mem[4] = 32'h0ce77800; // OR R7, R7, R7 (NOP)
+        mips.Mem[5] = 32'b000000_00001_00010_00100_00000_000000; // ADD R4, R1, R2
+        mips.Mem[6] = 32'h0ce77800; // OR R7, R7, R7 (NOP)
+        mips.Mem[7] = 32'b000000_00100_00011_00101_00000_000000; // ADD R5, R4, R3
+        mips.Mem[8] = 32'b111111_00000_00000_00000_00000_000000; // HLT
+
+        mips.HALTED = 0;
+        mips.PC = 0;
+        mips.TAKEN_BRANCH = 0;
+
+        #280
+        for (k = 0; k < 6; k = k+1) begin
+          $display ("R%1d - %2d", k, mips.Reg[k]);
+        end
+            
+    end
+
+
+    initial begin
+        $dumpfile ("mips.vcd");
+        $dumpvars (0, test_mips32);
+        #300 $finish;
+    end
+
+
+
+endmodule
