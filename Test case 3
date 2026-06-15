@@ -1,0 +1,79 @@
+/*
+
+- Compute the factorial of a number N stored memory location 200.
+  The result will be stored in memory location 198.
+- The steps: 
+  - Initialize register R10 with the memory address 200.
+  - Load the contents of memory location 200 into register R3.
+  - Initialize the register R2 with the value  1.
+  - In a loop, multiply R2 and R3, and store the product in R2.
+  - Dechement R3 by 1; if not zero repeat the loop.
+  - Store the result (from R3) in memory location 198.
+
+
+  Assembly Language Program                 Machine Code (in Binary)
+            ADDI    R10, R0, 200       001010 00000 01010 0000000011001000
+            ADDI    R2, R0, 1          001010 00000 00010 0000000000000001
+            LW      R3, 0(R10)         001000 01010 00011 0000000000000000
+      Loop: MUL     R2, R2, R3         000101 00010 00011 00010 00000 000000
+            SUBI    R3, R3, 1          001011 00011 00011 0000000000000001
+            BNEQZ   R3, Loop           001101 00011 00000 1111111111111101
+            SW      R2, -2(R10)        001001 00011 01010 1111111111111110
+            HLT                        111111 00000 00000 00000 00000 000000
+
+  */
+
+
+module test3_mips32;
+
+    reg clk1, clk2;
+    integer k;
+
+    pipe_MIPS32 mips(clk1, clk2);
+
+    initial begin
+        // FIX 4: repeat(60) so clocks cover the full #600 simulation window
+        clk1 = 0;
+        clk2 = 0;
+        repeat (60)
+            begin
+                #5 clk1 = 1; #5 clk1 = 0;
+                #5 clk2 = 1; #5 clk2 = 0;
+            end
+    end
+
+    initial 
+        begin
+          for (k =0; k <31; k = k+1)
+             mips.Reg[k] = k;
+
+             mips.Mem[0] = 32'h280a00c8;     
+             mips.Mem[1] = 32'h28020001;
+             mips.Mem[2] = 32'h0e94a000;
+             mips.Mem[3] = 32'h21430000;
+             mips.Mem[4] = 32'h0e94a000;
+             mips.Mem[5] = 32'h14431000;
+             mips.Mem[6] = 32'h2c630001;
+             mips.Mem[7] = 32'h0e94a000;
+             mips.Mem[8] = 32'h3460fffc;
+             mips.Mem[9] = 32'h2542fffe;
+             mips.Mem[10] = 32'hfc000000;
+             mips.Mem[200] = 7;    // Find factorial of 7
+
+             mips.PC = 0;
+             mips.HALTED = 0;
+             mips.TAKEN_BRANCH = 0;
+
+             #2000 $display ("Mem[200] = %2d, Mem[198] = %6d",
+                                         mips.Mem[200], mips.Mem[198]);
+
+        end
+
+    initial begin
+        $dumpfile ("mips3.vcd");
+        $dumpvars (0, test3_mips32);
+        $monitor ("R2: %4d", mips.Reg[2]);
+        #3000 $finish;
+    end
+
+endmodule
