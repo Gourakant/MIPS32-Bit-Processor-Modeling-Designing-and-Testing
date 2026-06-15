@@ -1,0 +1,67 @@
+/* Testbench for MIPS32 Processor
+
+    - Load a word stored in memory location 120, add 45 to it, and store the result in memory location 121.
+    - The steps:
+        - Initialize register R1 with the memory address 120.
+        - Load the contents of memory location 120 into register R2.
+        - Add 45 to register R2.
+        - Store the result in memory location 121.
+
+    Assembly Language Program:                     Machine Code (in Binary)                    Machine Code (in Hexadecimal)
+        ADDI R1, R0, 120   ; R1 = 120              001010 00000 00001 0000000001111000         32'h28010078
+        NOP (OR R7,R7,R7)  ; pipeline stall        000000 00111 00111 00111 00000 000011       32'h0ce77800  (wait for R1)
+        LW   R2, 0(R1)     ; R2 = Mem[R1+0]       001000 00001 00010 0000000000000000         32'h20220000
+        NOP (OR R7,R7,R7)  ; pipeline stall        000000 00111 00111 00111 00000 000011       32'h0ce77800  (wait for R2)
+        ADDI R2, R2, 45    ; R2 = R2 + 45          001010 00010 00010 0000000000101101         32'h2842002d
+        NOP (OR R7,R7,R7)  ; pipeline stall        000000 00111 00111 00111 00000 000011       32'h0ce77800  (wait for R2)
+        SW   R2, 1(R1)     ; Mem[R1+1] = R2        101000 00001 00010 0000000000000001         32'ha0220001
+        HLT                ; Halt the processor    111111 00000 00000 00000 00000 000000        32'hfc000000
+
+*/
+
+
+module test2_mips32;
+
+    reg clk1, clk2;
+
+    pipe_MIPS32 mips(clk1, clk2);
+
+    initial begin
+        // FIX 4: repeat(60) so clocks cover the full #600 simulation window
+        clk1 = 0;
+        clk2 = 0;
+        repeat (60)
+            begin
+                #5 clk1 = 1; #5 clk1 = 0;
+                #5 clk2 = 1; #5 clk2 = 0;
+            end
+    end
+
+    initial begin
+        mips.Mem[0] = 32'h28010078; // ADDI R1, R0, 120    → R1 = 120
+        mips.Mem[1] = 32'h0ce77800; // NOP (OR R7, R7, R7) → stall: wait for R1
+        mips.Mem[2] = 32'h20220000; // LW   R2, 0(R1)      → R2 = Mem[120]
+        mips.Mem[3] = 32'h0ce77800; // NOP (OR R7, R7, R7) → stall: wait for R2
+        mips.Mem[4] = 32'h2842002d; // ADDI R2, R2, 45     → R2 = R2 + 45
+        mips.Mem[5] = 32'h0ce77800; // NOP (OR R7, R7, R7) → stall: wait for R2
+        mips.Mem[6] = 32'ha0220001; // SW   R2, 1(R1)      → Mem[121] = R2
+        mips.Mem[7] = 32'hfc000000; // HLT
+
+        mips.Mem[120] = 85;         // Initial value to load
+
+        mips.PC           = 0;
+        mips.HALTED       = 0;
+        mips.TAKEN_BRANCH = 0;
+
+        #500
+        $display("Mem[120] = %4d", mips.Mem[120]);
+        $display("Mem[121] = %4d", mips.Mem[121]);   // Expected: 85 + 45 = 130
+    end
+
+    initial begin
+        $dumpfile("mips2.vcd");
+        $dumpvars(0, test2_mips32);
+        #600 $finish;
+    end
+
+endmodule
